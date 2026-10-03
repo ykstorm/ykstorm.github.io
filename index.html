@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lakshyaraj Singh Rao</title>
+<meta name="description" content="Lakshyaraj Singh Rao builds backend systems that fail safely. Case studies with the exact mechanism behind Homesty, Anvil, Anchor, Tripwire and Stackup.">
+<link rel="canonical" href="https://ykstorm.github.io/">
+<meta property="og:title" content="Lakshyaraj Singh Rao">
+<meta property="og:description" content="Backend systems that fail safely: webhooks that never run twice, retrieval that admits when it has nothing, streams that stop themselves.">
+<meta property="og:url" content="https://ykstorm.github.io/">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0e1a1d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230e1a1d'/%3E%3Crect x='5' y='13' width='6' height='6' rx='1' fill='none' stroke='%23a9b8b3' stroke-width='1.6'/%3E%3Crect x='16' y='6' width='2' height='20' fill='%23e9a23b'/%3E%3Crect x='22' y='13' width='6' height='6' rx='1' fill='%23e0e8e4'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --ground: #0e1a1d;
+  --ground-2: #112226;
+  --panel: #15282c;
+  --line: #2a4245;
+  --line-soft: #1d3236;
+  --ink: #e0e8e4;
+  --ink-2: #a9b8b3;
+  --ink-3: #7d8f89;
+  --accent: #e9a23b;
+  --sans: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --gutter: clamp(1.1rem, 4vw, 2.5rem);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1.0625rem;
+  line-height: 1.62;
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+
+img, svg, canvas { max-width: 100%; }
+::selection { background: var(--accent); color: var(--ground); }
+
+a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+a:hover { text-decoration-color: var(--accent); }
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 0.06em 0.34em;
+  overflow-wrap: anywhere;
+}
+
+.skip {
+  position: absolute;
+  left: var(--gutter);
+  top: -3rem;
+  background: var(--accent);
+  color: var(--ground);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  z-index: 10;
+}
+.skip:focus { top: 0.75rem; }
+
+.wrap {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* Masthead and hero */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1.5rem;
+  padding-block: 1.6rem 0;
+  font-size: 0.9375rem;
+}
+.masthead p { margin: 0; }
+.masthead .name { font-weight: 600; letter-spacing: 0.005em; }
+.masthead .place { color: var(--ink-3); }
+
+.hero { padding-block: clamp(2.6rem, 7vw, 5.5rem) 0; }
+
+.hero h1 {
+  margin: 0;
+  max-width: 21em;
+  font-size: clamp(2.05rem, 5.1vw, 4.25rem);
+  font-weight: 700;
+  font-stretch: 84%;
+  line-height: 1.04;
+  letter-spacing: -0.018em;
+}
+.hero h1 .ln { display: block; text-wrap: balance; }
+p, li { text-wrap: pretty; }
+.hero h1 .ln + .ln { margin-top: 0.06em; }
+
+.lane-panel {
+  margin-top: clamp(2rem, 5vw, 3.25rem);
+  background: var(--ground-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  overflow: hidden;
+}
+#lane {
+  display: block;
+  width: 100%;
+  height: clamp(118px, 15vw, 172px);
+}
+.lane-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 1.4rem;
+  margin: 0;
+  padding: 0.7rem 1rem 0.8rem;
+  border-top: 1px solid var(--line-soft);
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+.lane-key li { display: inline-flex; align-items: center; gap: 0.5rem; }
+.lane-key .note { color: var(--ink-3); margin-left: auto; }
+.sw {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 1.5px;
+  flex: none;
+}
+.sw-in { border: 1.5px solid var(--ink-2); }
+.sw-pass { background: var(--ink); }
+.sw-drop { border: 1.5px solid var(--ink-3); opacity: 0.7; }
+.sw-trip { background: var(--accent); }
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem 3rem;
+  align-items: end;
+  padding-block: 2rem 0;
+}
+.intro p { margin: 0; max-width: 40em; color: var(--ink-2); }
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9375rem;
+}
+
+/* Work index */
+
+.work-index { padding-block: clamp(3.5rem, 8vw, 6rem) 0; }
+.section-title {
+  margin: 0 0 1.1rem;
+  font-size: 1.3125rem;
+  font-weight: 600;
+  font-stretch: 92%;
+}
+.index { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.index a {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) 8.5rem;
+  gap: 0.25rem 1.5rem;
+  align-items: baseline;
+  padding: 0.85rem 0.25rem;
+  border-bottom: 1px solid var(--line-soft);
+  text-decoration: none;
+}
+.index .tool { font-weight: 600; font-size: 1.125rem; font-stretch: 92%; }
+.index .pattern { color: var(--ink-2); }
+.index .proof { color: var(--ink-3); font-size: 0.875rem; text-align: right; }
+.index a:hover .tool { color: var(--accent); }
+
+/* Case studies */
+
+.case {
+  padding-block: clamp(4rem, 9vw, 6.5rem) 0;
+  scroll-margin-top: 1rem;
+}
+.case-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem 2rem;
+  align-items: end;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--line);
+}
+.case h2 {
+  margin: 0;
+  font-size: clamp(2.1rem, 4.2vw, 3rem);
+  font-weight: 700;
+  font-stretch: 84%;
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+.case .pattern-line {
+  margin: 0.55rem 0 0;
+  font-size: 1.1875rem;
+  color: var(--ink-2);
+}
+.case-meta { text-align: right; font-size: 0.875rem; }
+.case-meta p { margin: 0; }
+.case-meta .stack { color: var(--ink-3); max-width: 26em; margin-left: auto; }
+.case-meta .links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.2rem 1rem;
+  margin-top: 0.35rem;
+}
+
+.spec {
+  display: grid;
+  grid-template-columns: 10.5rem minmax(0, 1fr);
+  gap: 0 2.5rem;
+  padding-top: 0.6rem;
+}
+.spec > h3 {
+  margin: 1.5rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-stretch: 92%;
+  color: var(--ink-3);
+  line-height: 1.75;
+}
+.spec > .body { margin-top: 1.5rem; max-width: 40em; }
+.spec > .body > :first-child { margin-top: 0; }
+.spec > .body > :last-child { margin-bottom: 0; }
+.spec p { margin: 0 0 0.9em; }
+.spec ul { margin: 0; padding-left: 1.1rem; }
+.spec li { margin-bottom: 0.65em; padding-left: 0.2rem; }
+.spec li::marker { color: var(--ink-3); }
+.spec li strong { font-weight: 600; }
+
+/* Figures: drawn by hand, one accent, only where the mechanism is spatial */
+
+.fig { grid-column: 1 / -1; min-width: 0; margin: 2.2rem 0 0.5rem; }
+.fig-frame {
+  overflow-x: auto;
+  background: var(--ground-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+.fig-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.fig svg { display: block; width: 100%; min-width: 860px; height: auto; }
+.fig figcaption {
+  margin-top: 0.7rem;
+  max-width: 46em;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+.swipe { display: none; color: var(--ink-2); }
+
+.track { fill: none; stroke: var(--ink-3); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.track-return { fill: none; stroke: var(--ink-3); stroke-width: 1.25; stroke-dasharray: 4 4; marker-end: url(#tip); }
+.stop-line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.stop-bar { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; }
+.station { fill: var(--ground-2); stroke: var(--ink-2); stroke-width: 2; }
+.source { fill: var(--ink-2); }
+.dead { fill: var(--accent); }
+.s-name { font-family: var(--sans); font-size: 14px; font-weight: 600; fill: var(--ink); }
+.s-note { font-family: var(--mono); font-size: 11px; fill: var(--ink-3); }
+.s-stop { font-family: var(--mono); font-size: 11px; fill: var(--accent); }
+.s-row { font-family: var(--sans); font-size: 13px; fill: var(--ink-2); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.tw { font-family: var(--mono); font-size: 13px; white-space: pre; }
+.tw-sent { fill: var(--ink); }
+.tw-held { fill: var(--ink-3); }
+.tw-hit { fill: var(--accent); }
+.cursor { stroke: var(--ink-2); stroke-width: 1.25; }
+.tick { stroke: var(--ink-3); stroke-width: 1; }
+.bracket { fill: none; stroke: var(--accent); stroke-width: 1.25; }
+.tip { fill: var(--ink-3); }
+
+/* Smaller work and contact */
+
+.also { padding-block: clamp(4rem, 9vw, 6.5rem) 0; }
+.also-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.also-list li {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) auto;
+  gap: 0.25rem 1.5rem;
+  align-items: baseline;
+  padding: 0.95rem 0.25rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.also-list .tool { font-weight: 600; font-size: 1.0625rem; font-stretch: 92%; }
+.also-list .what { color: var(--ink-2); max-width: 40em; }
+.also-list .where { display: flex; gap: 1rem; font-size: 0.875rem; white-space: nowrap; }
+
+.contact { padding-block: clamp(4rem, 9vw, 6.5rem) clamp(3rem, 7vw, 5rem); }
+.contact p { margin: 0 0 1rem; max-width: 40em; color: var(--ink-2); }
+.contact .email {
+  display: inline-block;
+  margin-bottom: 1.4rem;
+  font-size: clamp(1.35rem, 3vw, 1.875rem);
+  font-weight: 600;
+  font-stretch: 88%;
+  color: var(--ink);
+}
+.colophon {
+  margin-top: 3rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line-soft);
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+@media (max-width: 760px) {
+  .intro { grid-template-columns: 1fr; }
+  .index a { grid-template-columns: 1fr auto; }
+  .index .pattern { grid-column: 1 / -1; grid-row: 2; }
+  .case-head { grid-template-columns: 1fr; }
+  .case-meta { text-align: left; }
+  .case-meta .stack { margin-left: 0; }
+  .case-meta .links { justify-content: flex-start; }
+  .spec { grid-template-columns: minmax(0, 1fr); }
+  .spec > h3 { margin-top: 1.6rem; }
+  .spec > .body { margin-top: 0.3rem; }
+  .also-list li { grid-template-columns: 1fr; }
+  .lane-key .note { margin-left: 0; }
+}
+/* Below this width the 860px diagrams no longer fit their column and scroll. */
+@media (max-width: 939px) {
+  .swipe { display: inline; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="tip" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="tip"/></marker>
+  </defs>
+</svg>
+
+<a class="skip" href="#work">Skip to the work</a>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="name">Lakshyaraj Singh Rao</p>
+    <p class="place">Mumbai / Bangalore</p>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="statement">
+      <h1 id="statement">
+        <span class="ln">I build backend systems that fail safely:</span>
+        <span class="ln">webhooks that never run twice,</span>
+        <span class="ln">retrieval that admits when it has nothing,</span>
+        <span class="ln">streams that stop themselves.</span>
+      </h1>
+
+      <div class="lane-panel">
+        <canvas id="lane" role="img" aria-label="Animated sketch: squares flow left to right through a gate. New ones pass, repeat copies drop out, and one that trips a rule stops at the gate and halts the lane."></canvas>
+        <ul class="lane-key">
+          <li><span class="sw sw-in"></span>arriving</li>
+          <li><span class="sw sw-pass"></span>passed the gate</li>
+          <li><span class="sw sw-drop"></span>repeat, dropped</li>
+          <li><span class="sw sw-trip"></span>tripped a rule, lane halts</li>
+          <li class="note">A sketch of the idea, not live data.</li>
+        </ul>
+      </div>
+
+      <div class="intro">
+        <p>Full stack developer with a backend focus. B.Tech in Computer Science, Manipal University Jaipur, 2026. Each case study below is a problem I hit, the exact mechanism I built for it, and what shipped, including what it doesn't do.</p>
+        <ul class="contact-links">
+          <li><a href="https://github.com/ykstorm">GitHub</a></li>
+          <li><a href="https://lakshyaraj-dev.vercel.app">Portfolio</a></li>
+          <li><a href="https://linkedin.com/in/lakshyaraj-singh-rao">LinkedIn</a></li>
+          <li><a href="mailto:raolakshyaraj@gmail.com">raolakshyaraj@gmail.com</a></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="work-index" id="work" aria-labelledby="work-title">
+      <h2 class="section-title" id="work-title">The work</h2>
+      <ul class="index">
+        <li><a href="#homesty"><span class="tool">Homesty</span><span class="pattern">Answers that come from the real listing</span><span class="proof">live site</span></a></li>
+        <li><a href="#anvil"><span class="tool">Anvil</span><span class="pattern">Webhooks that run once</span><span class="proof">on npm</span></a></li>
+        <li><a href="#anchor"><span class="tool">Anchor</span><span class="pattern">Retrieval that admits when it has nothing</span><span class="proof">live playground</span></a></li>
+        <li><a href="#tripwire"><span class="tool">Tripwire</span><span class="pattern">Streams that stop themselves</span><span class="proof">on npm</span></a></li>
+        <li><a href="#stackup"><span class="tool">Stackup</span><span class="pattern">Canary deploys gated on real traffic</span><span class="proof">docs site</span></a></li>
+      </ul>
+    </section>
+
+    <!-- Homesty -->
+    <article class="case" id="homesty" aria-labelledby="homesty-title">
+      <div class="case-head">
+        <div>
+          <h2 id="homesty-title">Homesty</h2>
+          <p class="pattern-line">Answers that come from the real listing</p>
+        </div>
+        <div class="case-meta">
+          <p class="stack">Next.js, React, Node, Postgres, Prisma, Vercel, Sentry</p>
+          <p class="links"><a href="https://homesty.ai">homesty.ai</a></p>
+        </div>
+      </div>
+
+      <div class="spec">
+        <h3>The problem</h3>
+        <div class="body">
+          <p>People buying a flat ask narrow questions: when possession is due, which configurations exist, what a project actually includes. A chat reply that sounds right but didn't come from the listing is worse than no reply, because the buyer acts on it.</p>
+        </div>
+
+        <h3>How it works</h3>
+        <div class="body">
+          <p>A buyer asks about a project in the chat. The question goes to a Node REST API, which reads that project's listing records from Postgres through Prisma, and the reply is built from those records.</p>
+          <p>The team keeps the records current in an admin area behind sign-in. Every change is written to an audit log: who made it, what changed, when, and the record version. So the answer a buyer sees comes from the same records the team edits, and each edit can be traced.</p>
+        </div>
+
+        <h3>What shipped</h3>
+        <div class="body">
+          <p>I've been building Homesty since November 2025: the landing page, the buyer chat, the REST API, the admin area, auth, and the audit log. It's live at <a href="https://homesty.ai">homesty.ai</a>, deployed on Vercel, with errors reported to Sentry.</p>
+          <p>Anchor, further down, is the retrieval idea from Homesty pulled out into its own tool: when the sources don't cover the question, say so.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Anvil -->
+    <article class="case" id="anvil" aria-labelledby="anvil-title">
+      <div class="case-head">
+        <div>
+          <h2 id="anvil-title">Anvil</h2>
+          <p class="pattern-line">Webhooks that run once</p>
+        </div>
+        <div class="case-meta">
+          <p class="stack">TypeScript, Redis, BullMQ, Docker</p>
+          <p class="links"><a href="https://github.com/ykstorm/anvil">GitHub</a><a href="https://www.npmjs.com/package/@ykstormsorg/anvil">npm</a></p>
+        </div>
+      </div>
+
+      <div class="spec">
+        <h3>The problem</h3>
+        <div class="body">
+          <p>A webhook provider retries when it doesn't hear back fast, and re-sends events it isn't sure you got. Meanwhile your handler can crash halfway through a job. Without care, the same payment or signup is processed twice, and the jobs that keep failing have nowhere to go.</p>
+        </div>
+
+        <h3>How it works</h3>
+        <div class="body">
+          <ul>
+            <li><strong>Check the signature first.</strong> Recompute HMAC-SHA256 over the raw request bytes and compare with <code>crypto.timingSafeEqual</code> after a length check. A bad, missing or malformed signature gets 401 and nothing is queued.</li>
+            <li><strong>Claim the delivery.</strong> The idempotency key is <code>sha256(signature header + raw body)</code>. The first delivery claims it with an atomic <code>SET key 1 NX EX ttl</code> (one week by default), enqueues one BullMQ job, and returns 202 with the job id. A repeat finds the key taken and gets 202 with <code>replayed: true</code> and the same job id. Two copies arriving at the same moment still make one job.</li>
+            <li><strong>Retry on a fixed schedule.</strong> A failing handler gets four attempts in all, with waits of 1s, 5s and 30s between them.</li>
+            <li><strong>Park what never succeeds.</strong> After the fourth failure the job moves to <code>webhooks.dead</code> with its attempt count and last error, truncated, with credential-looking query params redacted.</li>
+            <li><strong>Replay by hand.</strong> <code>replayDeadLetter(jobId)</code> moves one dead job back to the main queue with a fresh retry schedule. It starts no worker, so importing it can't kick off a retry loop.</li>
+          </ul>
+        </div>
+
+        <figure class="fig">
+          <div class="fig-frame" tabindex="0" role="region" aria-label="Anvil line diagram, scrolls sideways on small screens">
+            <svg viewBox="0 0 960 316" role="img" aria-labelledby="anvil-fig">
+              <title id="anvil-fig">The request runs from the provider through verify, claim and enqueue. Verify stops a bad signature with 401 and nothing queued. Claim stops a repeat delivery with 202, replayed true, and no new job. Enqueue hands one job to the worker, which makes four attempts with waits of 1s, 5s and 30s between them. After the fourth failure the job goes to webhooks.dead, and replayDeadLetter, run by hand, puts it back on the queue.</title>
+
+              <path d="M36,110 H530 V262 H900" class="track"/>
+              <rect x="31" y="105" width="10" height="10" rx="1.5" class="source"/>
+              <text x="31" y="58" class="s-name">Provider</text>
+              <text x="31" y="76" class="s-note">POST /webhook</text>
+
+              <circle cx="210" cy="110" r="6" class="station"/>
+              <text x="210" y="58" class="s-name mid">Verify</text>
+              <text x="210" y="76" class="s-note mid">HMAC-SHA256</text>
+              <text x="210" y="91" class="s-note mid">over the raw bytes</text>
+
+              <circle cx="380" cy="110" r="6" class="station"/>
+              <text x="380" y="58" class="s-name mid">Claim</text>
+              <text x="380" y="76" class="s-note mid">SET key NX EX ttl</text>
+              <text x="380" y="91" class="s-note mid">key = sha256(sig + body)</text>
+
+              <circle cx="530" cy="110" r="6" class="station"/>
+              <text x="530" y="58" class="s-name mid">Enqueue</text>
+              <text x="530" y="76" class="s-note mid">one BullMQ job</text>
+              <text x="530" y="91" class="s-note mid">202 { jobId }</text>
+
+              <path d="M210,117 V164" class="stop-line"/>
+              <path d="M203,166 H217" class="stop-bar"/>
+              <text x="226" y="170" class="s-stop">401, nothing queued</text>
+
+              <path d="M380,117 V164" class="stop-line"/>
+              <path d="M373,166 H387" class="stop-bar"/>
+              <text x="396" y="170" class="s-stop">202, replayed: true</text>
+              <text x="396" y="185" class="s-stop">no new job</text>
+
+              <circle cx="530" cy="262" r="5" class="station"/>
+              <circle cx="566" cy="262" r="5" class="station"/>
+              <circle cx="657" cy="262" r="5" class="station"/>
+              <circle cx="830" cy="262" r="5" class="station"/>
+              <text x="548" y="250" class="s-note mid">1s</text>
+              <text x="611" y="250" class="s-note mid">5s</text>
+              <text x="743" y="250" class="s-note mid">30s</text>
+              <text x="889" y="250" class="s-stop end">4th failure</text>
+              <text x="516" y="286" class="s-note end">attempts</text>
+              <text x="530" y="286" class="s-note mid">1</text>
+              <text x="566" y="286" class="s-note mid">2</text>
+              <text x="657" y="286" class="s-note mid">3</text>
+              <text x="830" y="286" class="s-note mid">4</text>
+
+              <rect x="895" y="257" width="10" height="10" rx="1.5" class="dead"/>
+              <text x="942" y="286" class="s-stop end">webhooks.dead</text>
+              <text x="942" y="302" class="s-note end">{ attempts, lastError }</text>
+
+              <path d="M900,256 V214 H540" class="track-return"/>
+              <text x="721" y="206" class="s-note mid">replayDeadLetter(jobId), by hand</text>
+            </svg>
+          </div>
+          <figcaption><span class="swipe">Scroll the diagram sideways to see all of it. </span>The top line is the request; each drop is a place it stops on purpose. The lower line is the job: four attempts spaced by the log of the wait between them, then the dead-letter queue. The return is dashed because it only runs when someone calls it.</figcaption>
+        </figure>
+
+        <h3>What shipped</h3>
+        <div class="body">
+          <p>Published on npm as <a href="https://www.npmjs.com/package/@ykstormsorg/anvil">@ykstormsorg/anvil</a>. The SDK exports three functions: <code>createServer</code>, <code>createWorker</code> and <code>replayDeadLetter</code>, and the repo has tests for each behavior above.</p>
+        </div>
+
+        <h3>What it doesn't do</h3>
+        <div class="body">
+          <p>The HMAC covers the body only, so a captured request can be replayed after its key expires. If your provider signs a timestamp, check it in your handler. A provider that changes the signature on re-delivery produces a new key; deduping on a provider event id is out of scope. One Redis, one region. Replay is one job at a time, with no batch tool or UI yet.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Anchor -->
+    <article class="case" id="anchor" aria-labelledby="anchor-title">
+      <div class="case-head">
+        <div>
+          <h2 id="anchor-title">Anchor</h2>
+          <p class="pattern-line">Retrieval that admits when it has nothing</p>
+        </div>
+        <div class="case-meta">
+          <p class="stack">TypeScript, Next.js, Postgres with pgvector, Prisma</p>
+          <p class="links"><a href="https://github.com/ykstorm/anchor">GitHub</a><a href="https://anchor-iota-ten.vercel.app/playground">Playground</a></p>
+        </div>
+      </div>
+
+      <div class="spec">
+        <h3>The problem</h3>
+        <div class="body">
+          <p>Most retrieval examples hand the top few chunks to a model however weak the match. A chunk with a cosine similarity of 0.12 to the question isn't a basis for an answer, but a top-k pipeline passes it along anyway, and the model writes something plausible, cited and wrong.</p>
+        </div>
+
+        <h3>How it works</h3>
+        <div class="body">
+          <p>Anchor embeds the query and runs a cosine-similarity search over a pgvector table for the top candidates, six by default. It notes the best similarity it saw, then drops every chunk under the floor, 0.30 by default.</p>
+          <p>If chunks remain, it returns them with the source of each one. If none remain, it returns an empty list with <code>refused: true</code>, plus the floor and the best similarity, so the caller can tell a real miss from a weak guess. Nothing in the query text can lower the floor. No model is called here; this is the layer a model would sit on.</p>
+        </div>
+
+        <h3>What shipped</h3>
+        <div class="body">
+          <p>A Next.js app with a query API and a <a href="https://anchor-iota-ten.vercel.app/playground">playground</a> that runs against a seeded demo corpus, so you can watch a question get answered or refused.</p>
+        </div>
+
+        <h3>What it doesn't do</h3>
+        <div class="body">
+          <p>The 0.30 floor is a property of the corpus, not a constant. It separates answerable from unanswerable questions on the seeded demo set; another corpus needs its own number, found by comparing similarity scores for questions you know are answerable against ones you know aren't.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Tripwire -->
+    <article class="case" id="tripwire" aria-labelledby="tripwire-title">
+      <div class="case-head">
+        <div>
+          <h2 id="tripwire-title">Tripwire</h2>
+          <p class="pattern-line">Streams that stop themselves</p>
+        </div>
+        <div class="case-meta">
+          <p class="stack">TypeScript, Express, OpenAI-compatible proxy</p>
+          <p class="links"><a href="https://github.com/ykstorm/tripwire">GitHub</a><a href="https://www.npmjs.com/package/@ykstormsorg/tripwire">npm</a></p>
+        </div>
+      </div>
+
+      <div class="spec">
+        <h3>The problem</h3>
+        <div class="body">
+          <p>A streamed reply is on the user's screen as it's generated. If a model leaks an API key, a phone number or a discount nobody approved, a check that runs when the response finishes is too late. The leak can also be split across chunks, <code>"call "</code> then <code>"98765"</code> then <code>"43210"</code>, and checked one chunk at a time, none of them looks wrong.</p>
+        </div>
+
+        <h3>How it works</h3>
+        <div class="body">
+          <p>Every chunk is appended to a raw buffer and a normalized copy, and the rules run against the normalized text on every chunk. The guard holds back the last 48 characters before releasing anything, so a match that straddles chunk boundaries is still inside the tail when it completes.</p>
+          <p>If a hard-abort rule matches (a secret, contact or business leak), the guard throws <code>GuardAbortError</code> and latches, and the held tail is never sent. As a proxy, Tripwire speaks the OpenAI chat API, so an app only changes its base URL; on a trip it sends a <code>rule_trip</code> event and closes the stream. If nothing trips, everything except the tail is released, and <code>flush()</code> sends the tail at the end.</p>
+        </div>
+
+        <figure class="fig">
+          <div class="fig-frame" tabindex="0" role="region" aria-label="Tripwire hold-back diagram, scrolls sideways on small screens">
+            <svg viewBox="0 0 900 236" role="img" aria-labelledby="tripwire-fig">
+              <title id="tripwire-fig">The buffer after each of three chunks. After chunk 1, 22 characters have been sent and the last 48 are held back. After chunk 2, 27 characters have been sent and the held tail now ends in call 98765. Chunk 3 adds 43210, completing the phone number inside the held tail; the phone rule matches and the stream aborts, so only Possession is due in March was ever sent.</title>
+
+              <text x="24" y="56" class="s-row">after chunk 1</text>
+              <text x="150" y="56" class="tw tw-sent" textLength="171.6" lengthAdjust="spacing">Possession is due in M</text>
+              <text x="321.6" y="56" class="tw tw-held" textLength="366.6" lengthAdjust="spacing">arch 2028. Site visits run daily; to book, call</text>
+              <line x1="321.6" y1="40" x2="321.6" y2="62" class="cursor"/>
+              <path d="M321.6,66 V70 H696 V66" class="bracket"/>
+              <text x="321.6" y="86" class="s-stop">held back: the last 48 characters</text>
+
+              <text x="24" y="122" class="s-row">after chunk 2</text>
+              <text x="150" y="122" class="tw tw-sent" textLength="202.8" lengthAdjust="spacing">Possession is due in March</text>
+              <text x="360.6" y="122" class="tw tw-held" textLength="374.4" lengthAdjust="spacing">2028. Site visits run daily; to book, call 98765</text>
+              <line x1="360.6" y1="106" x2="360.6" y2="128" class="cursor"/>
+              <line x1="696" y1="104" x2="696" y2="108" class="tick"/>
+              <path d="M360.6,132 V136 H735 V132" class="bracket"/>
+
+              <text x="24" y="188" class="s-row">after chunk 3</text>
+              <text x="150" y="188" class="tw tw-sent" textLength="202.8" lengthAdjust="spacing">Possession is due in March</text>
+              <text x="360.6" y="188" class="tw tw-held" textLength="327.6" lengthAdjust="spacing">2028. Site visits run daily; to book, call</text>
+              <text x="696" y="188" class="tw tw-hit" textLength="78" lengthAdjust="spacing">9876543210</text>
+              <line x1="360.6" y1="172" x2="360.6" y2="194" class="cursor"/>
+              <line x1="696" y1="170" x2="696" y2="174" class="tick"/>
+              <line x1="735" y1="170" x2="735" y2="174" class="tick"/>
+              <path d="M696,198 V202 H774 V198" class="bracket"/>
+              <text x="150" y="218" class="s-note">all the user ever saw</text>
+              <text x="696" y="218" class="s-stop">phone rule matches: abort</text>
+            </svg>
+          </div>
+          <figcaption><span class="swipe">Scroll the diagram sideways to see all of it. </span>Each row is the buffer after a chunk arrives. Bright text has been sent, dim text is held, and the small ticks mark where chunks 2 and 3 begin. The tail is always the last 48 characters, so it slides right as the stream grows; the number completes inside it, and the guard aborts before releasing any of it.</figcaption>
+        </figure>
+
+        <h3>What shipped</h3>
+        <div class="body">
+          <p>Published on npm as <a href="https://www.npmjs.com/package/@ykstormsorg/tripwire">@ykstormsorg/tripwire</a>, as a library you call at the stream site and as the proxy you run beside your app. A post-hoc mode, <code>checkResponse</code>, runs the same patterns over finished responses for batch review.</p>
+        </div>
+
+        <h3>What it doesn't do</h3>
+        <div class="body">
+          <p>It's regex. It catches mechanical leaks such as keys, phone numbers, email addresses and fixed phrases, not a paraphrase that matches no pattern. Output also trails the model by the hold-back length, 48 characters by default.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Stackup -->
+    <article class="case" id="stackup" aria-labelledby="stackup-title">
+      <div class="case-head">
+        <div>
+          <h2 id="stackup-title">Stackup</h2>
+          <p class="pattern-line">Canary deploys gated on real traffic</p>
+        </div>
+        <div class="case-meta">
+          <p class="stack">kind, ArgoCD, Argo Rollouts, Prometheus, Grafana, Helm</p>
+          <p class="links"><a href="https://github.com/ykstorm/stackup">GitHub</a><a href="https://ykstorm.github.io/stackup/">Docs</a></p>
+        </div>
+      </div>
+
+      <div class="spec">
+        <h3>The problem</h3>
+        <div class="body">
+          <p>I wanted the whole progressive-delivery loop, GitOps sync, canary steps and a metric gate, running on a laptop rather than on a managed cluster that bills by the month.</p>
+        </div>
+
+        <h3>How it works</h3>
+        <div class="body">
+          <p>A push changes what the cluster should run. ArgoCD, set up as one root app managing six child apps, syncs it with automated prune and self-heal. Argo Rollouts moves 25% of traffic to the new version, pauses, and runs an analysis: Prometheus computes the share of 2xx responses in <code>http_requests_total</code> over a two-minute window, three times, 30 seconds apart.</p>
+          <p>At 0.95 or above, the rollout moves on to 50, 75 and 100%. A failing analysis is meant to abort the rollout and send traffic back to the stable version.</p>
+        </div>
+
+        <h3>What shipped</h3>
+        <div class="body">
+          <p><code>make up</code> builds the stack on kind; the README puts it at roughly 12 to 15 minutes, which depends on your machine and how much has to download. It also sets up cert-manager TLS, Sealed Secrets, Calico network policies and Pod Security <code>restricted</code> on workload namespaces.</p>
+          <p>A separate CI job builds a kind cluster with a live Prometheus, drives real traffic, and watches a 25, 50, 75, 100% canary advance only because the measured ratio clears 0.95. No mocked metric.</p>
+        </div>
+
+        <h3>What it doesn't do</h3>
+        <div class="body">
+          <p>The rollback isn't proven yet. CI only runs the passing path, and <code>failureLimit</code> is currently equal to the number of checks, so failing checks alone can't fail the analysis. Lowering it and adding a run that forces a failing canary is the next change. Logs and traces (Loki, Tempo) are on the roadmap, not installed.</p>
+        </div>
+      </div>
+    </article>
+
+    <section class="also" aria-labelledby="also-title">
+      <h2 class="section-title" id="also-title">Smaller tools</h2>
+      <ul class="also-list">
+        <li>
+          <span class="tool">Goldset</span>
+          <span class="what">A GitHub Action that runs behavioral evals on pull requests (golden sets, a model judge, grounding and structure checks), comments the change against the base branch, and fails the check on a regression.</span>
+          <span class="where"><a href="https://github.com/ykstorm/goldset">GitHub</a><a href="https://github.com/marketplace/actions/goldset-ai-eval-gate">Marketplace</a></span>
+        </li>
+        <li>
+          <span class="tool">Quickdraw</span>
+          <span class="what">A CLI that measures model streaming: time to first token, tokens per second, p50, p95 and p99, and cost, with a cost ceiling checked before each call.</span>
+          <span class="where"><a href="https://github.com/ykstorm/quickdraw">GitHub</a><a href="https://www.npmjs.com/package/@ykstormsorg/quickdraw">npm</a></span>
+        </li>
+        <li>
+          <span class="tool">Codecraft</span>
+          <span class="what">An in-browser IDE: a Vite and React dev server boots inside the tab on WebContainers, with a Monaco editor, a real shell and a hot-reloading preview.</span>
+          <span class="where"><a href="https://github.com/ykstorm/codecraft-ai">GitHub</a><a href="https://codecraft-ai-tau.vercel.app">Live</a></span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="contact" id="contact" aria-labelledby="contact-title">
+      <h2 class="section-title" id="contact-title">Contact</h2>
+      <p>Email is the quickest way to reach me.</p>
+      <a class="email" href="mailto:raolakshyaraj@gmail.com">raolakshyaraj@gmail.com</a>
+      <ul class="contact-links">
+        <li><a href="https://github.com/ykstorm">GitHub</a></li>
+        <li><a href="https://lakshyaraj-dev.vercel.app">Portfolio</a></li>
+        <li><a href="https://linkedin.com/in/lakshyaraj-singh-rao">LinkedIn</a></li>
+      </ul>
+      <p class="colophon">Plain HTML, CSS and inline SVG. Source on <a href="https://github.com/ykstorm/ykstorm.github.io">GitHub</a>.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  var canvas = document.getElementById('lane');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var css = getComputedStyle(document.documentElement);
+  function tok(name) { return css.getPropertyValue(name).trim(); }
+  var C = { accent: tok('--accent'), ink: tok('--ink'), ink2: tok('--ink-2'), faint: tok('--ink-3'), line: tok('--line') };
+
+  var LANES = 3;
+  var W = 0, H = 0, gateX = 0, size = 7, speed = 70;
+  var packets = [], spawnIn = 0, halt = 0, allowTrip = true;
+  var running = false, onScreen = true, last = 0, raf = 0;
+
+  // Seeded so the first frame and the reduced-motion frame look the same every time.
+  var seed = 11;
+  function rand() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+
+  function laneY(i) { var pad = H * 0.26; return pad + (H - pad * 2) * (i / (LANES - 1)); }
+
+  // Assigning canvas.width clears the bitmap, so only touch it when the
+  // backing size really changes; otherwise a still frame would be wiped.
+  function resize() {
+    var r = canvas.getBoundingClientRect();
+    if (!r.width) return false;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var bw = Math.round(r.width * dpr), bh = Math.round(r.height * dpr);
+    if (W && bw === canvas.width && bh === canvas.height) return false;
+    W = r.width; H = r.height;
+    canvas.width = bw;
+    canvas.height = bh;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    gateX = Math.round(W * 0.56);
+    size = W < 520 ? 6 : 7;
+    speed = Math.max(46, Math.min(84, W * 0.075));
+    return true;
+  }
+
+  function laneClear(y) {
+    for (var i = 0; i < packets.length; i++) {
+      var p = packets[i];
+      if (p.st === 'in' && p.y === y && p.x < size * 2.2) return false;
+    }
+    return true;
+  }
+
+  function spawn() {
+    var y = laneY(Math.floor(rand() * LANES));
+    if (!laneClear(y)) return false;
+    var r = rand();
+    if (allowTrip && r < 0.05) {
+      packets.push({ x: -size, y: y, kind: 'trip', st: 'in', a: 1, vy: 0 });
+      return true;
+    }
+    packets.push({ x: -size, y: y, kind: 'new', st: 'in', a: 1, vy: 0 });
+    // A re-delivery: an identical copy right behind the original.
+    if (r > 0.7) packets.push({ x: -size * 3.6, y: y, kind: 'dup', st: 'in', a: 1, vy: 0 });
+    return true;
+  }
+
+  function step(dt) {
+    var i, p;
+    if (halt > 0) {
+      halt -= dt;
+      if (halt <= 0) {
+        // The stream was aborted: whatever was still held is never sent.
+        for (i = 0; i < packets.length; i++) {
+          p = packets[i];
+          if (p.st === 'in' || p.st === 'trip') p.st = 'void';
+        }
+      }
+    } else {
+      spawnIn -= dt;
+      if (spawnIn <= 0 && spawn()) spawnIn = 0.3 + rand() * 0.4;
+    }
+
+    for (i = 0; i < packets.length; i++) {
+      p = packets[i];
+      if (p.st === 'in') {
+        if (halt > 0) continue;
+        p.x += speed * dt;
+        if (p.x + size >= gateX) {
+          if (p.kind === 'new') p.st = 'pass';
+          else if (p.kind === 'dup') { p.st = 'drop'; p.x = gateX - size - 2; }
+          else { p.st = 'trip'; p.x = gateX - size - 2; halt = 1.6; }
+        }
+      } else if (p.st === 'pass') {
+        p.x += speed * dt;
+        if (p.x > W * 0.86) p.a -= dt * 1.6;
+      } else if (p.st === 'drop') {
+        p.vy += 150 * dt;
+        p.y += p.vy * dt;
+        p.a -= dt * 1.5;
+      } else if (p.st === 'void') {
+        p.a -= dt * 2.5;
+      }
+    }
+    packets = packets.filter(function (q) { return q.a > 0 && q.x < W + 20 && q.y < H + 20; });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    var i, y, p;
+
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = C.line;
+    ctx.setLineDash([2, 6]);
+    ctx.beginPath();
+    for (i = 0; i < LANES; i++) {
+      y = Math.round(laneY(i)) + 0.5;
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // The gate is the one accent: it is where the system decides.
+    var top = Math.round(H * 0.12), bottom = Math.round(H * 0.88);
+    ctx.strokeStyle = C.accent;
+    ctx.lineWidth = halt > 0 ? 3 : 2;
+    ctx.beginPath();
+    ctx.moveTo(gateX, top); ctx.lineTo(gateX, bottom);
+    ctx.moveTo(gateX - 5, top); ctx.lineTo(gateX + 5, top);
+    ctx.moveTo(gateX - 5, bottom); ctx.lineTo(gateX + 5, bottom);
+    ctx.stroke();
+
+    for (i = 0; i < packets.length; i++) {
+      p = packets[i];
+      var x = Math.round(p.x), py = Math.round(p.y - size / 2);
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.a)) * (p.kind === 'dup' && p.st === 'in' ? 0.7 : 1);
+      if (p.st === 'pass') {
+        ctx.fillStyle = C.ink;
+        ctx.fillRect(x, py, size, size);
+      } else if (p.st === 'trip') {
+        ctx.fillStyle = C.accent;
+        ctx.fillRect(x, py, size, size);
+      } else {
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = p.st === 'in' ? C.ink2 : C.faint;
+        ctx.strokeRect(x + 0.75, py + 0.75, size - 1.5, size - 1.5);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function frame(t) {
+    if (!running) return;
+    var dt = Math.min(0.05, Math.max(0, (t - last) / 1000));
+    last = t;
+    step(dt);
+    draw();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start() {
+    if (running || motion.matches || !onScreen || document.hidden) return;
+    running = true;
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function stop() {
+    running = false;
+    cancelAnimationFrame(raf);
+  }
+
+  // Run the simulation off-screen until the lane is full, so the first
+  // painted frame is already in its steady state rather than empty.
+  function prime() {
+    seed = 11; packets = []; halt = 0; spawnIn = 0; allowTrip = false;
+    for (var i = 0; i < 780; i++) step(1 / 60);
+    allowTrip = true;
+  }
+
+  function onMotionChange() {
+    if (motion.matches) { stop(); prime(); draw(); }
+    else { prime(); draw(); start(); }
+  }
+
+  resize();
+  prime();
+  draw();
+  if (!motion.matches) start();
+
+  if (motion.addEventListener) motion.addEventListener('change', onMotionChange);
+  else if (motion.addListener) motion.addListener(onMotionChange);
+
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(function () {
+      if (!resize()) return;
+      prime();
+      draw();
+    }).observe(canvas);
+  }
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries) {
+      onScreen = entries[0].isIntersecting;
+      if (onScreen) start(); else stop();
+    }).observe(canvas);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) stop(); else start();
+  });
+})();
+</script>
+</body>
+</html>
