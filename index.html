@@ -477,11 +477,11 @@ p, li { text-wrap: pretty; }
         <h3>How it works</h3>
         <div class="body">
           <ul>
-            <li><strong>Check the signature first.</strong> Recompute HMAC-SHA256 over the raw request bytes and compare with <code>crypto.timingSafeEqual</code> after a length check. A bad, missing or malformed signature gets 401 and nothing is queued.</li>
-            <li><strong>Claim the delivery.</strong> The idempotency key is <code>sha256(signature header + raw body)</code>. The first delivery claims it with an atomic <code>SET key 1 NX EX ttl</code> (one week by default), enqueues one BullMQ job, and returns 202 with the job id. A repeat finds the key taken and gets 202 with <code>replayed: true</code> and the same job id. Two copies arriving at the same moment still make one job.</li>
-            <li><strong>Retry on a fixed schedule.</strong> A failing handler gets four attempts in all, with waits of 1s, 5s and 30s between them.</li>
-            <li><strong>Park what never succeeds.</strong> After the fourth failure the job moves to <code>webhooks.dead</code> with its attempt count and last error, truncated, with credential-looking query params redacted.</li>
-            <li><strong>Replay by hand.</strong> <code>replayDeadLetter(jobId)</code> moves one dead job back to the main queue with a fresh retry schedule. It starts no worker, so importing it can't kick off a retry loop.</li>
+            <li>Check the signature first. Recompute HMAC-SHA256 over the raw request bytes and compare with <code>crypto.timingSafeEqual</code> after a length check. A bad, missing or malformed signature gets 401 and nothing is queued.</li>
+            <li>Claim the delivery. The idempotency key is <code>sha256(signature header + raw body)</code>. The first delivery claims it with an atomic <code>SET key 1 NX EX ttl</code> (one week by default), enqueues one BullMQ job, and returns 202 with the job id. A repeat finds the key taken and gets 202 with <code>replayed: true</code> and the same job id. Two copies arriving at the same moment still make one job.</li>
+            <li>Retry on a fixed schedule. A failing handler gets four attempts in all, with waits of 1s, 5s and 30s between them.</li>
+            <li>Park what never succeeds. After the fourth failure the job moves to <code>webhooks.dead</code> with its attempt count and last error, truncated, with credential-looking query params redacted.</li>
+            <li>Replay by hand. <code>replayDeadLetter(jobId)</code> moves one dead job back to the main queue with a fresh retry schedule. It starts no worker, so importing it can't kick off a retry loop.</li>
           </ul>
         </div>
 
