@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ykstorm.github.io/sitemap.xml
